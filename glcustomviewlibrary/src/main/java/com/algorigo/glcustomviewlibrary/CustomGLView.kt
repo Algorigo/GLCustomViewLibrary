@@ -1,0 +1,280 @@
+package com.algorigo.glcustomviewlibrary
+
+import android.content.Context
+import android.graphics.PixelFormat
+import android.opengl.GLES20
+import android.opengl.GLSurfaceView
+import android.opengl.Matrix
+import android.os.Handler
+import android.os.Looper
+import android.util.AttributeSet
+import com.algorigo.glcustomviewlibrary.ShaderHelper.*
+import javax.microedition.khronos.egl.EGLConfig
+import javax.microedition.khronos.opengles.GL10
+
+
+class CustomGLView : GLSurfaceView {
+
+    data class Vec3D(val x: Float, val y: Float, val z: Float)
+
+    enum class Rotation {
+        NORMAL,
+        CW_90,
+        CW_180,
+        CW_270,
+    }
+
+    sealed class ColorMap {
+        class RainbowColorMapRect(
+            val centerPosition: Vec3D = Vec3D(0f, 0f, 0f),
+            val vec1: Vec3D = Vec3D(22f, 0f, 0f),
+            val vec2: Vec3D = Vec3D(0f, 22f, 0f),
+            var rotation: Rotation = Rotation.NORMAL,
+            val flip: Boolean = false,
+            val sizePerWidth: Int = 57,
+            val sizePerHeight: Int = 57
+        ) : ColorMap()
+    }
+
+    private val colorMaps = mutableListOf<ColorMap>()
+    private val colorMapObjects = mutableListOf<Square>()
+    private var rendererSurfaceCreated = false
+
+    inner class GLPressureRenderer : GLSurfaceView.Renderer {
+
+        private var program: Int = 0
+
+        /** OpenGL handles to our program uniforms.  */
+        private var mvpMatrixUniform: Int = 0
+        private var mvMatrixUniform: Int = 0
+
+        /** OpenGL handles to our program attributes.  */
+        private var positionAttribute: Int = 0
+        private var normalAttribute: Int = 0
+        private var colorAttribute: Int = 0
+
+        /**
+         * Store the model matrix. This matrix is used to move models from object
+         * space (where each model can be thought of being located at the center of
+         * the universe) to world space.
+         */
+        private val modelMatrix = FloatArray(16)
+
+        /**
+         * Store the view matrix. This can be thought of as our camera. This matrix
+         * transforms world space to eye space; it positions things relative to our
+         * eye.
+         */
+        private val viewMatrix = FloatArray(16)
+
+        /**
+         * Store the projection matrix. This is used to project the scene onto a 2D
+         * viewport.
+         */
+        private val projectionMatrix = FloatArray(16)
+
+        /**
+         * Allocate storage for the final combined matrix. This will be passed into
+         * the shader program.
+         */
+        private val mvpMatrix = FloatArray(16)
+
+        /** Additional matrices.  */
+        private val accumulatedRotation = FloatArray(16)
+        private val currentRotation = FloatArray(16)
+        private val temporaryMatrix = FloatArray(16)
+
+        private var length = 21.12
+        private var theta = 0.0
+        private var phi = 0.0
+        private var angle = 0.0
+
+        override fun onSurfaceCreated(gl: GL10?, config: EGLConfig?) {
+            rendererSurfaceCreated = true
+
+            GLES20.glDisable(GLES20.GL_DITHER)
+
+            GLES20.glClearColor(0f, 0f, 0f, 0f)
+
+            // Enable depth testing
+            GLES20.glEnable(GLES20.GL_DEPTH_TEST)
+
+            for (colorMap in colorMaps) {
+                addColorMapObject(colorMap)
+            }
+
+            setLookAt()
+
+            val vertexShader = RawResourceReader.readTextFileFromRawResource(context, R.raw.per_pixel_vertex_shader_no_tex)
+            val fragmentShader = RawResourceReader.readTextFileFromRawResource(context, R.raw.per_pixel_fragment_shader_no_tex)
+
+            val vertexShaderHandle = ShaderHelper.compileShader(GLES20.GL_VERTEX_SHADER, vertexShader)
+            val fragmentShaderHandle = ShaderHelper.compileShader(GLES20.GL_FRAGMENT_SHADER, fragmentShader)
+
+            program = ShaderHelper.createAndLinkProgram(vertexShaderHandle, fragmentShaderHandle, arrayOf(POSITION_ATTRIBUTE, NORMAL_ATTRIBUTE, COLOR_ATTRIBUTE))
+
+            // Initialize the accumulated rotation matrix
+            Matrix.setIdentityM(accumulatedRotation, 0)
+        }
+
+        override fun onSurfaceChanged(gl: GL10?, width: Int, height: Int) {
+            // Set the OpenGL viewport to the same size as the surface.
+            GLES20.glViewport(0, 0, width, height)
+
+            // Create a new perspective projection matrix. The height will stay the
+            // same while the width will vary as per aspect ratio.
+            val ratio = 1f
+            val left = -1.0f
+            val bottom = -1.0f
+            val top = 1.0f
+            val near = 1.0f
+            val far = 1000.0f
+
+            Matrix.frustumM(projectionMatrix, 0, left, ratio, bottom, top, near, far)
+        }
+
+        override fun onDrawFrame(gl: GL10?) {
+            GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT or GLES20.GL_DEPTH_BUFFER_BIT)
+
+            // Set our per-vertex lighting program.
+            GLES20.glUseProgram(program)
+
+            // Set program handles for cube drawing.
+            mvpMatrixUniform = GLES20.glGetUniformLocation(program, MVP_MATRIX_UNIFORM)
+            mvMatrixUniform = GLES20.glGetUniformLocation(program, MV_MATRIX_UNIFORM)
+            positionAttribute = GLES20.glGetAttribLocation(program, POSITION_ATTRIBUTE)
+            normalAttribute = GLES20.glGetAttribLocation(program, NORMAL_ATTRIBUTE)
+            colorAttribute = GLES20.glGetAttribLocation(program, COLOR_ATTRIBUTE)
+
+            // Draw the heightmap.
+            // Translate the heightmap into the screen.
+            Matrix.setIdentityM(modelMatrix, 0)
+//            Matrix.translateM(modelMatrix, 0, 0.0f, 0.0f, -12f)
+
+            // Set a matrix that contains the current rotation.
+            Matrix.setIdentityM(currentRotation, 0)
+//            Matrix.rotateM(currentRotation, 0, deltaX, 0.0f, 1.0f, 0.0f)
+//            Matrix.rotateM(currentRotation, 0, deltaY, 1.0f, 0.0f, 0.0f)
+//            deltaX = 0.0f
+//            deltaY = 0.0f
+
+            // Multiply the current rotation by the accumulated rotation, and then
+            // set the accumulated rotation to the result.
+            Matrix.multiplyMM(temporaryMatrix, 0, currentRotation, 0, accumulatedRotation, 0)
+            System.arraycopy(temporaryMatrix, 0, accumulatedRotation, 0, 16)
+
+            // Rotate the cube taking the overall rotation into account.
+            Matrix.multiplyMM(temporaryMatrix, 0, modelMatrix, 0, accumulatedRotation, 0)
+            System.arraycopy(temporaryMatrix, 0, modelMatrix, 0, 16)
+
+            // This multiplies the view matrix by the model matrix, and stores
+            // the result in the MVP matrix
+            // (which currently contains model * view).
+            Matrix.multiplyMM(mvpMatrix, 0, viewMatrix, 0, modelMatrix, 0)
+
+            // Pass in the modelview matrix.
+            GLES20.glUniformMatrix4fv(mvMatrixUniform, 1, false, mvpMatrix, 0)
+
+            // This multiplies the modelview matrix by the projection matrix,
+            // and stores the result in the MVP matrix
+            // (which now contains model * view * projection).
+            Matrix.multiplyMM(temporaryMatrix, 0, projectionMatrix, 0, mvpMatrix, 0)
+            System.arraycopy(temporaryMatrix, 0, mvpMatrix, 0, 16)
+
+            // Pass in the combined matrix.
+            GLES20.glUniformMatrix4fv(mvpMatrixUniform, 1, false, mvpMatrix, 0)
+
+            // Render the heightmap.
+            for (colorMapObject in colorMapObjects) {
+                colorMapObject.draw(positionAttribute, normalAttribute, colorAttribute)
+            }
+        }
+
+        private fun setLookAt() {
+            // Position the eye in front of the origin.
+            val eyeX = Math.cos(phi) * Math.sin(theta) * length
+            val eyeY = Math.sin(phi) * length
+            val eyeZ = Math.cos(phi) * Math.cos(theta) * length
+
+            // We are looking toward the distance
+            val lookX = Math.cos(phi) * Math.sin(theta) * length * -1.2
+            val lookY = Math.sin(phi) * length * -1.2
+            val lookZ = Math.cos(phi) * Math.cos(theta) * length * -1.2
+
+            // Set our up vector. This is where our head would be pointing were we
+            // holding the camera.
+            val upX = 0.0f
+            val upY = Math.cos(angle).toFloat()
+            val upZ = Math.sin(angle).toFloat()
+
+            // Set the view matrix. This matrix can be said to represent the camera
+            // position.
+            // NOTE: In OpenGL 1, a ModelView matrix is used, which is a combination
+            // of a model and view matrix. In OpenGL 2, we can keep track of these
+            // matrices separately if we choose.
+            Matrix.setLookAtM(viewMatrix, 0, eyeX.toFloat(), eyeY.toFloat(), eyeZ.toFloat(), lookX.toFloat(), lookY.toFloat(), lookZ.toFloat(), upX, upY, upZ)
+        }
+    }
+
+    lateinit var renderer: GLPressureRenderer
+
+    constructor(context: Context?) : this(context, null)
+
+    constructor(context: Context?, attributeSet: AttributeSet?) : super(context, attributeSet) {
+        initialize()
+    }
+
+    fun initialize() {
+        // OpenGL ES 2.0 context를 생성합니다.
+        setEGLContextClientVersion(2)
+        setEGLConfigChooser(8, 8, 8, 8, 16, 0)
+        getHolder().setFormat(PixelFormat.RGBA_8888)
+        setZOrderOnTop(true)
+
+        // GLSurfaceView에 그래픽 객체를 그리는 처리를 하는 renderer를 설정합니다.
+        renderer = GLPressureRenderer()
+        setRenderer(renderer)
+
+        //Surface가 생성될때와 GLSurfaceView클래스의 requestRender 메소드가 호출될때에만 화면을 다시 그리게 됩니다.
+        setRenderMode(GLSurfaceView.RENDERMODE_WHEN_DIRTY)
+    }
+
+    fun addColorMap(colorMap: ColorMap) {
+        colorMaps.add(colorMap)
+        if (rendererSurfaceCreated) {
+            addColorMapObject(colorMap)
+        }
+    }
+
+    private fun addColorMapObject(colorMap: ColorMap) {
+        when (colorMap) {
+            is ColorMap.RainbowColorMapRect -> {
+                colorMapObjects.add(
+                    Square(
+                        colorMap.centerPosition,
+                        colorMap.vec1,
+                        colorMap.vec2,
+                        colorMap.rotation,
+                        colorMap.flip,
+                        colorMap.sizePerWidth,
+                        colorMap.sizePerHeight
+                    )
+                )
+            }
+        }
+    }
+
+    fun setData(data: Array<FloatArray>) {
+        setData(0, data)
+    }
+
+    fun setData(position: Int, data: Array<FloatArray>) {
+        if (position >= 0 && position < colorMapObjects.size) {
+            colorMapObjects.get(position).setData(data)
+            Handler(Looper.getMainLooper()).post {
+                requestRender()
+            }
+        }
+    }
+
+}
