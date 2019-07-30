@@ -2,6 +2,7 @@ package com.algorigo.glcustomviewlibrary
 
 import android.content.Context
 import android.graphics.PixelFormat
+import android.graphics.PointF
 import android.opengl.GLES20
 import android.opengl.GLSurfaceView
 import android.opengl.Matrix
@@ -14,6 +15,11 @@ import javax.microedition.khronos.opengles.GL10
 
 
 class CustomGLView : GLSurfaceView {
+
+    internal interface GLObject {
+        fun setData(data: FloatArray)
+        fun draw(positionAttribute: Int, normalAttribute: Int, colorAttribute: Int)
+    }
 
     data class Vec3D(val x: Float, val y: Float, val z: Float)
 
@@ -34,10 +40,18 @@ class CustomGLView : GLSurfaceView {
             val sizePerWidth: Int = 57,
             val sizePerHeight: Int = 57
         ) : ColorMap()
+
+        class RainbowColorMapCustom(
+            val vertexData: List<PointF>,
+            val heightMapIndexData: IntArray,
+            val centerPosition: Vec3D = Vec3D(0f, 0f, 0f),
+            val vec1: Vec3D = Vec3D(22f, 0f, 0f),
+            val vec2: Vec3D = Vec3D(0f, 22f, 0f)
+        ) : ColorMap()
     }
 
     private val colorMaps = mutableListOf<ColorMap>()
-    private val colorMapObjects = mutableListOf<Square>()
+    private val colorMapObjects = mutableListOf<GLObject>()
     private var rendererSurfaceCreated = false
 
     inner class GLPressureRenderer : GLSurfaceView.Renderer {
@@ -261,14 +275,25 @@ class CustomGLView : GLSurfaceView {
                     )
                 )
             }
+            is ColorMap.RainbowColorMapCustom -> {
+                colorMapObjects.add(
+                    CustomObject(
+                        colorMap.vertexData,
+                        colorMap.heightMapIndexData,
+                        colorMap.centerPosition,
+                        colorMap.vec1,
+                        colorMap.vec2
+                    )
+                )
+            }
         }
     }
 
-    fun setData(data: Array<FloatArray>) {
+    fun setData(data: FloatArray) {
         setData(0, data)
     }
 
-    fun setData(position: Int, data: Array<FloatArray>) {
+    fun setData(position: Int, data: FloatArray) {
         if (position >= 0 && position < colorMapObjects.size) {
             colorMapObjects.get(position).setData(data)
             Handler(Looper.getMainLooper()).post {
