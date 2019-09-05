@@ -13,12 +13,10 @@ internal class Square(private val centerPosition: CustomGLView.Vec3D = CustomGLV
                       private var rotation: CustomGLView.Rotation = CustomGLView.Rotation.NORMAL,
                       flip: Boolean = false,
                       private val sizePerWidth: Int = 57,
-                      private val sizePerHeight: Int = 57) {
+                      private val sizePerHeight: Int = 57) : CustomGLView.GLObject {
 
     private val vbo = IntArray(1)
     private val ibo = IntArray(1)
-
-    private var indexCount = 0
 
     private lateinit var heightMapVertexData: FloatArray
     private lateinit var heightMapIndexData: IntArray
@@ -118,8 +116,6 @@ internal class Square(private val centerPosition: CustomGLView.Vec3D = CustomGLV
                     }
                 }
             }
-
-            indexCount = heightMapIndexData.size
         } catch (t: Throwable) {
             Log.w(LOG_TAG, t)
         }
@@ -129,7 +125,7 @@ internal class Square(private val centerPosition: CustomGLView.Vec3D = CustomGLV
         releaseBuffer()
     }
 
-    fun draw(positionAttribute: Int, normalAttribute: Int, colorAttribute: Int) {
+    override fun draw(positionAttribute: Int, normalAttribute: Int, colorAttribute: Int) {
         releaseBuffer()
 
         val heightMapVertexDataBuffer = ByteBuffer
@@ -173,7 +169,7 @@ internal class Square(private val centerPosition: CustomGLView.Vec3D = CustomGLV
 
             // Draw
             GLES20.glBindBuffer(GLES20.GL_ELEMENT_ARRAY_BUFFER, ibo[0])
-            GLES20.glDrawElements(GLES20.GL_TRIANGLE_STRIP, indexCount, GLES20.GL_UNSIGNED_INT, 0)
+            GLES20.glDrawElements(GLES20.GL_TRIANGLE_STRIP, heightMapIndexData.size, GLES20.GL_UNSIGNED_INT, 0)
 
             GLES20.glBindBuffer(GLES20.GL_ARRAY_BUFFER, 0)
             GLES20.glBindBuffer(GLES20.GL_ELEMENT_ARRAY_BUFFER, 0)
@@ -192,28 +188,23 @@ internal class Square(private val centerPosition: CustomGLView.Vec3D = CustomGLV
         }
     }
 
-    fun setData(data: Array<FloatArray>) {
-        val xLength = data[0].size
-        val yLength = data.size
-        if (xLength != sizePerWidth && yLength != sizePerHeight) {
+    override fun setData(data: FloatArray) {
+        if (data.size != sizePerWidth * sizePerHeight) {
             return
         }
 
         var offset = 6
 
         // First, build the data for the vertex buffer
-        for (y in 0 until yLength) {
-            for (x in 0 until xLength) {
-                // Add some fancy colors.
-                var datum = data[y][x]
-                val color = ColorMapper.getColor(datum * 100)
-                heightMapVertexData[offset] = color[0]/255f
-                heightMapVertexData[offset+1] = color[1]/255f
-                heightMapVertexData[offset+2] = color[2]/255f
-                heightMapVertexData[offset+3] = color[3]/255f
+        for (datum in data) {
+            // Add some fancy colors.
+            val color = ColorMapper.getColor(datum * 100)
+            heightMapVertexData[offset] = color[0]/255f
+            heightMapVertexData[offset+1] = color[1]/255f
+            heightMapVertexData[offset+2] = color[2]/255f
+            heightMapVertexData[offset+3] = color[3]/255f
 
-                offset += FLOATS_PER_VERTEX
-            }
+            offset += FLOATS_PER_VERTEX
         }
     }
 
