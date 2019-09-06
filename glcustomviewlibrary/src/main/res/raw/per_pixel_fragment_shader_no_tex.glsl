@@ -11,10 +11,10 @@ varying vec3 v_Normal;         	// Interpolated normal for this fragment.
 void main()
 {
 	// Will be used for attenuation.
-    float distance = length(u_LightPos - v_Position);
+    //float distance = length(u_LightPos - v_Position);
 
 	// Get a lighting direction vector from the light to the vertex.
-    vec3 lightVector = normalize(u_LightPos - v_Position);
+    //vec3 lightVector = normalize(u_LightPos - v_Position);
 
 	// Calculate the dot product of the light vector and vertex normal. If the normal and light vector are
 	// pointing in the same direction then it will get max illumination.

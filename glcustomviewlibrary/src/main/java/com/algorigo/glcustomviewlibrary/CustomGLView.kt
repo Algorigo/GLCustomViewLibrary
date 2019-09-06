@@ -54,7 +54,7 @@ class CustomGLView : GLSurfaceView {
     private val colorMapObjects = mutableListOf<GLObject>()
     private var rendererSurfaceCreated = false
 
-    inner class GLPressureRenderer : GLSurfaceView.Renderer {
+    inner class GLPressureRenderer : Renderer {
 
         private var program: Int = 0
 
@@ -98,10 +98,15 @@ class CustomGLView : GLSurfaceView {
         private val currentRotation = FloatArray(16)
         private val temporaryMatrix = FloatArray(16)
 
-        private var length = 21.12
-        private var theta = 0.0
-        private var phi = 0.0
-        private var angle = 0.0
+        internal var eyePoint = Vec3D(0f, 0f, 21.12f)
+        internal var lookAt = Vec3D(0f, 0f, -1f)
+        internal var eyeUp = Vec3D(0f, 1f, 0f)
+
+        internal var centerX = 0f
+        internal var centerY = 0f
+        internal var size = 2f
+        internal var near = 1.0f
+        internal var far = 200.0f
 
         override fun onSurfaceCreated(gl: GL10?, config: EGLConfig?) {
             rendererSurfaceCreated = true
@@ -135,16 +140,7 @@ class CustomGLView : GLSurfaceView {
             // Set the OpenGL viewport to the same size as the surface.
             GLES20.glViewport(0, 0, width, height)
 
-            // Create a new perspective projection matrix. The height will stay the
-            // same while the width will vary as per aspect ratio.
-            val ratio = 1f
-            val left = -1.0f
-            val bottom = -1.0f
-            val top = 1.0f
-            val near = 1.0f
-            val far = 1000.0f
-
-            Matrix.frustumM(projectionMatrix, 0, left, ratio, bottom, top, near, far)
+            frustumM()
         }
 
         override fun onDrawFrame(gl: GL10?) {
@@ -204,29 +200,67 @@ class CustomGLView : GLSurfaceView {
             }
         }
 
-        private fun setLookAt() {
+        internal fun setLookAt() {
             // Position the eye in front of the origin.
-            val eyeX = Math.cos(phi) * Math.sin(theta) * length
-            val eyeY = Math.sin(phi) * length
-            val eyeZ = Math.cos(phi) * Math.cos(theta) * length
+//            val eyeX = Math.cos(phi) * Math.sin(theta) * length
+//            val eyeY = Math.sin(phi) * length
+//            val eyeZ = Math.cos(phi) * Math.cos(theta) * length
+//            val eyeX = 54.64
+//            val eyeY = 66.81
+//            val eyeZ = 89.09
 
             // We are looking toward the distance
-            val lookX = Math.cos(phi) * Math.sin(theta) * length * -1.2
-            val lookY = Math.sin(phi) * length * -1.2
-            val lookZ = Math.cos(phi) * Math.cos(theta) * length * -1.2
+//            val lookX = Math.cos(phi) * Math.sin(theta) * length * -1.2
+//            val lookY = Math.sin(phi) * length * -1.2
+//            val lookZ = Math.cos(phi) * Math.cos(theta) * length * -1.2
+//            val lookX = -15.62
+//            val lookY = -15.65
+//            val lookZ = -13.32
 
             // Set our up vector. This is where our head would be pointing were we
             // holding the camera.
-            val upX = 0.0f
-            val upY = Math.cos(angle).toFloat()
-            val upZ = Math.sin(angle).toFloat()
+//            val upX = 0.0
+//            val upY = Math.cos(angle)
+//            val upZ = Math.sin(angle)
 
             // Set the view matrix. This matrix can be said to represent the camera
             // position.
             // NOTE: In OpenGL 1, a ModelView matrix is used, which is a combination
             // of a model and view matrix. In OpenGL 2, we can keep track of these
             // matrices separately if we choose.
-            Matrix.setLookAtM(viewMatrix, 0, eyeX.toFloat(), eyeY.toFloat(), eyeZ.toFloat(), lookX.toFloat(), lookY.toFloat(), lookZ.toFloat(), upX, upY, upZ)
+            if (rendererSurfaceCreated) {
+                Matrix.setLookAtM(
+                    viewMatrix,
+                    0,
+                    eyePoint.x,
+                    eyePoint.y,
+                    eyePoint.z,
+                    lookAt.x,
+                    lookAt.y,
+                    lookAt.z,
+                    eyeUp.x,
+                    eyeUp.y,
+                    eyeUp.z
+                )
+            }
+        }
+
+        internal fun frustumM() {
+            // Create a new perspective projection matrix. The height will stay the
+            // same while the width will vary as per aspect ratio.
+
+            if (rendererSurfaceCreated) {
+                Matrix.frustumM(
+                    projectionMatrix,
+                    0,
+                    centerX - size / 2,
+                    centerX + size / 2,
+                    centerY - size / 2,
+                    centerY + size / 2,
+                    near,
+                    far
+                )
+            }
         }
     }
 
@@ -302,4 +336,58 @@ class CustomGLView : GLSurfaceView {
         }
     }
 
+    fun setViewStatus(eyePoint: Vec3D? = null, lookAt: Vec3D? = null, eyeUp: Vec3D? = null) {
+        var changed = false
+        eyePoint?.let {
+            changed = changed or (renderer.eyePoint.equals(it))
+            renderer.eyePoint = it
+        }
+        lookAt?.let {
+            changed = changed or (renderer.lookAt.equals(it))
+            renderer.lookAt = it
+        }
+        eyeUp?.let {
+            changed = changed or (renderer.eyeUp.equals(it))
+            renderer.eyeUp = it
+        }
+        if (changed) {
+            renderer.setLookAt()
+            requestRender()
+        }
+    }
+
+    fun setViewport(centerX: Float? = null, centerY: Float? = null, size: Float? = null) {
+        var changed = false
+        centerX?.let {
+            changed = changed or (renderer.centerX == it)
+            renderer.centerX = it
+        }
+        centerY?.let {
+            changed = changed or (renderer.centerY == it)
+            renderer.centerY = it
+        }
+        size?.let {
+            changed = changed or (renderer.size == it)
+            renderer.size = it
+        }
+        if (changed) {
+            renderer.frustumM()
+            requestRender()
+        }
+    }
+
+    fun moveViewport(dx: Float, dy: Float) {
+        renderer.centerX += dx
+        renderer.centerY += dy
+
+        renderer.frustumM()
+        requestRender()
+    }
+
+    fun zoomViewport(zoom: Float) {
+        renderer.size *= zoom
+
+        renderer.frustumM()
+        requestRender()
+    }
 }
