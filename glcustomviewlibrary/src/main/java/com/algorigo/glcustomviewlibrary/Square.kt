@@ -63,10 +63,10 @@ internal class Square(private val centerPosition: CustomGLView.Vec3D = CustomGLV
                     heightMapVertexData[offset++] = normalVector[2] / length
 
                     // Add some fancy colors.
-                    heightMapVertexData[offset++] = x.toFloat() / xLength
-                    heightMapVertexData[offset++] = y.toFloat() / yLength
-                    heightMapVertexData[offset++] = 0.5f
-                    heightMapVertexData[offset++] = 1.0f
+                    heightMapVertexData[offset++] = 0.0f
+                    heightMapVertexData[offset++] = 0.0f
+                    heightMapVertexData[offset++] = 0.0f
+                    heightMapVertexData[offset++] = 0.0f
                 }
             }
 
