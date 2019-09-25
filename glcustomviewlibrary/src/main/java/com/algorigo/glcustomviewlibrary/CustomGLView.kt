@@ -116,7 +116,12 @@ class CustomGLView : GLSurfaceView {
             GLES20.glClearColor(0f, 0f, 0f, 0f)
 
             // Enable depth testing
-            GLES20.glEnable(GLES20.GL_DEPTH_TEST)
+//            GLES20.glEnable(GLES20.GL_DEPTH_TEST)
+            GLES20.glDisable(GLES20.GL_DEPTH_TEST)
+
+            GLES20.glEnable(GLES20.GL_BLEND)
+            GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA)
+            GLES20.glDepthMask(false)
 
             for (colorMap in colorMaps) {
                 addColorMapObject(colorMap)
