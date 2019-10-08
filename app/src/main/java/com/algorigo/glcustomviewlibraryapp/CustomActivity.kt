@@ -1,9 +1,9 @@
 package com.algorigo.glcustomviewlibraryapp
 
 import android.graphics.PointF
-import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
 import android.util.Log
+import androidx.appcompat.app.AppCompatActivity
 import com.algorigo.glcustomviewlibrary.CustomGLView
 import io.reactivex.Observable
 import io.reactivex.Single
