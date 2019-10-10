@@ -50,9 +50,10 @@ class CustomGLView : GLSurfaceView {
         ) : ColorMap()
     }
 
+    private var rendererSurfaceCreated = false
     private val colorMaps = mutableListOf<ColorMap>()
     private val colorMapObjects = mutableListOf<GLObject>()
-    private var rendererSurfaceCreated = false
+    private val dataMap = mutableMapOf<Int, FloatArray>()
 
     inner class GLPressureRenderer : Renderer {
 
@@ -124,7 +125,13 @@ class CustomGLView : GLSurfaceView {
             GLES20.glDepthMask(false)
 
             for (colorMap in colorMaps) {
-                addColorMapObject(colorMap)
+                addColorMapObject(colorMap).also {
+                    val index = colorMapObjects.indexOf(it)
+                    if (dataMap.containsKey(index)) {
+                        it.setData(dataMap[index]!!)
+                        dataMap.remove(index)
+                    }
+                }
             }
 
             setLookAt()
@@ -299,31 +306,31 @@ class CustomGLView : GLSurfaceView {
         }
     }
 
-    private fun addColorMapObject(colorMap: ColorMap) {
-        when (colorMap) {
+    private fun addColorMapObject(colorMap: ColorMap): GLObject {
+        return when (colorMap) {
             is ColorMap.RainbowColorMapRect -> {
-                colorMapObjects.add(
-                    Square(
-                        colorMap.centerPosition,
-                        colorMap.vec1,
-                        colorMap.vec2,
-                        colorMap.rotation,
-                        colorMap.flip,
-                        colorMap.sizePerWidth,
-                        colorMap.sizePerHeight
-                    )
-                )
+                Square(
+                    colorMap.centerPosition,
+                    colorMap.vec1,
+                    colorMap.vec2,
+                    colorMap.rotation,
+                    colorMap.flip,
+                    colorMap.sizePerWidth,
+                    colorMap.sizePerHeight
+                ).also {
+                    colorMapObjects.add(it)
+                }
             }
             is ColorMap.RainbowColorMapCustom -> {
-                colorMapObjects.add(
-                    CustomObject(
-                        colorMap.vertexData,
-                        colorMap.heightMapIndexData,
-                        colorMap.centerPosition,
-                        colorMap.vec1,
-                        colorMap.vec2
-                    )
-                )
+                CustomObject(
+                    colorMap.vertexData,
+                    colorMap.heightMapIndexData,
+                    colorMap.centerPosition,
+                    colorMap.vec1,
+                    colorMap.vec2
+                ).also {
+                    colorMapObjects.add(it)
+                }
             }
         }
     }
@@ -338,6 +345,8 @@ class CustomGLView : GLSurfaceView {
             Handler(Looper.getMainLooper()).post {
                 requestRender()
             }
+        } else {
+            dataMap[position] = data
         }
     }
 

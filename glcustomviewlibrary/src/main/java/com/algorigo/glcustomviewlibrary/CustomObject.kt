@@ -15,7 +15,7 @@ internal class CustomObject(private val vertexData: List<PointF>,
     private val vbo = IntArray(1)
     private val ibo = IntArray(1)
 
-    private lateinit var heightMapVertexData: FloatArray
+    private var heightMapVertexData: FloatArray
 
     init {
         heightMapVertexData = FloatArray(vertexData.size * FLOATS_PER_VERTEX)
