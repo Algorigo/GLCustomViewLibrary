@@ -9,6 +9,7 @@ import android.opengl.Matrix
 import android.os.Handler
 import android.os.Looper
 import android.util.AttributeSet
+import android.util.SparseArray
 import com.algorigo.glcustomviewlibrary.ShaderHelper.*
 import javax.microedition.khronos.egl.EGLConfig
 import javax.microedition.khronos.opengles.GL10
@@ -51,9 +52,9 @@ class CustomGLView : GLSurfaceView {
     }
 
     private var rendererSurfaceCreated = false
-    private val colorMaps = mutableListOf<ColorMap>()
-    private val colorMapObjects = mutableListOf<GLObject>()
-    private val dataMap = mutableMapOf<Int, FloatArray>()
+    private val colorMaps = SparseArray<ColorMap>()
+    private val colorMapObjects = SparseArray<GLObject>()
+    private val dataMap = SparseArray<FloatArray>()
 
     inner class GLPressureRenderer : Renderer {
 
@@ -124,12 +125,15 @@ class CustomGLView : GLSurfaceView {
             GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA)
             GLES20.glDepthMask(false)
 
-            for (colorMap in colorMaps) {
-                addColorMapObject(colorMap).also {
-                    val index = colorMapObjects.indexOf(it)
-                    if (dataMap.containsKey(index)) {
-                        it.setData(dataMap[index]!!)
-                        dataMap.remove(index)
+            for (index in 0 until colorMaps.size()) {
+                val key = colorMaps.keyAt(index)
+                val colorMap = colorMaps[key]
+                addColorMapObject(key, colorMap).also {
+                    val objIndex = colorMapObjects.indexOfValue(it)
+                    val objKey = colorMapObjects.keyAt(objIndex)
+                    if (dataMap.indexOfKey(objKey) >= 0) {
+                        it.setData(dataMap[objKey])
+                        dataMap.remove(objKey)
                     }
                 }
             }
@@ -207,7 +211,8 @@ class CustomGLView : GLSurfaceView {
             GLES20.glUniformMatrix4fv(mvpMatrixUniform, 1, false, mvpMatrix, 0)
 
             // Render the heightmap.
-            for (colorMapObject in colorMapObjects) {
+            for (index in 0 until colorMapObjects.size()) {
+                val colorMapObject = colorMapObjects.valueAt(index)
                 colorMapObject.draw(positionAttribute, normalAttribute, colorAttribute)
             }
         }
@@ -300,13 +305,17 @@ class CustomGLView : GLSurfaceView {
     }
 
     fun addColorMap(colorMap: ColorMap) {
-        colorMaps.add(colorMap)
+        addColorMap(0, colorMap)
+    }
+
+    fun addColorMap(key: Int, colorMap: ColorMap) {
+        colorMaps.put(key, colorMap)
         if (rendererSurfaceCreated) {
-            addColorMapObject(colorMap)
+            addColorMapObject(key, colorMap)
         }
     }
 
-    private fun addColorMapObject(colorMap: ColorMap): GLObject {
+    private fun addColorMapObject(key: Int, colorMap: ColorMap): GLObject {
         return when (colorMap) {
             is ColorMap.RainbowColorMapRect -> {
                 Square(
@@ -318,7 +327,7 @@ class CustomGLView : GLSurfaceView {
                     colorMap.sizePerWidth,
                     colorMap.sizePerHeight
                 ).also {
-                    colorMapObjects.add(it)
+                    colorMapObjects.put(key, it)
                 }
             }
             is ColorMap.RainbowColorMapCustom -> {
@@ -329,7 +338,7 @@ class CustomGLView : GLSurfaceView {
                     colorMap.vec1,
                     colorMap.vec2
                 ).also {
-                    colorMapObjects.add(it)
+                    colorMapObjects.put(key, it)
                 }
             }
         }
@@ -339,14 +348,14 @@ class CustomGLView : GLSurfaceView {
         setData(0, data)
     }
 
-    fun setData(position: Int, data: FloatArray) {
-        if (position >= 0 && position < colorMapObjects.size) {
-            colorMapObjects.get(position).setData(data)
+    fun setData(key: Int, data: FloatArray) {
+        if (colorMapObjects.indexOfKey(key) >= 0) {
+            colorMapObjects[key].setData(data)
             Handler(Looper.getMainLooper()).post {
                 requestRender()
             }
         } else {
-            dataMap[position] = data
+            dataMap.put(key, data)
         }
     }
 
