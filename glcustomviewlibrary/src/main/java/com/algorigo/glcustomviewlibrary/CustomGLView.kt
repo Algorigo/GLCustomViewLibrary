@@ -9,6 +9,7 @@ import android.opengl.Matrix
 import android.os.Handler
 import android.os.Looper
 import android.util.AttributeSet
+import android.util.SparseArray
 import com.algorigo.glcustomviewlibrary.ShaderHelper.*
 import javax.microedition.khronos.egl.EGLConfig
 import javax.microedition.khronos.opengles.GL10
@@ -38,7 +39,8 @@ class CustomGLView : GLSurfaceView {
             var rotation: Rotation = Rotation.NORMAL,
             val flip: Boolean = false,
             val sizePerWidth: Int = 57,
-            val sizePerHeight: Int = 57
+            val sizePerHeight: Int = 57,
+            val colorMapper: ColorMapper = ColorMapperDefault
         ) : ColorMap()
 
         class RainbowColorMapCustom(
@@ -46,13 +48,15 @@ class CustomGLView : GLSurfaceView {
             val heightMapIndexData: IntArray,
             val centerPosition: Vec3D = Vec3D(0f, 0f, 0f),
             val vec1: Vec3D = Vec3D(22f, 0f, 0f),
-            val vec2: Vec3D = Vec3D(0f, 22f, 0f)
+            val vec2: Vec3D = Vec3D(0f, 22f, 0f),
+            val colorMapper: ColorMapper = ColorMapperDefault
         ) : ColorMap()
     }
 
-    private val colorMaps = mutableListOf<ColorMap>()
-    private val colorMapObjects = mutableListOf<GLObject>()
     private var rendererSurfaceCreated = false
+    private val colorMaps = SparseArray<ColorMap>()
+    private val colorMapObjects = SparseArray<GLObject>()
+    private val dataMap = SparseArray<FloatArray>()
 
     inner class GLPressureRenderer : Renderer {
 
@@ -116,10 +120,24 @@ class CustomGLView : GLSurfaceView {
             GLES20.glClearColor(0f, 0f, 0f, 0f)
 
             // Enable depth testing
-            GLES20.glEnable(GLES20.GL_DEPTH_TEST)
+//            GLES20.glEnable(GLES20.GL_DEPTH_TEST)
+            GLES20.glDisable(GLES20.GL_DEPTH_TEST)
 
-            for (colorMap in colorMaps) {
-                addColorMapObject(colorMap)
+            GLES20.glEnable(GLES20.GL_BLEND)
+            GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA)
+            GLES20.glDepthMask(false)
+
+            for (index in 0 until colorMaps.size()) {
+                val key = colorMaps.keyAt(index)
+                val colorMap = colorMaps[key]
+                addColorMapObject(key, colorMap).also {
+                    val objIndex = colorMapObjects.indexOfValue(it)
+                    val objKey = colorMapObjects.keyAt(objIndex)
+                    if (dataMap.indexOfKey(objKey) >= 0) {
+                        it.setData(dataMap[objKey])
+                        dataMap.remove(objKey)
+                    }
+                }
             }
 
             setLookAt()
@@ -195,7 +213,8 @@ class CustomGLView : GLSurfaceView {
             GLES20.glUniformMatrix4fv(mvpMatrixUniform, 1, false, mvpMatrix, 0)
 
             // Render the heightmap.
-            for (colorMapObject in colorMapObjects) {
+            for (index in 0 until colorMapObjects.size()) {
+                val colorMapObject = colorMapObjects.valueAt(index)
                 colorMapObject.draw(positionAttribute, normalAttribute, colorAttribute)
             }
         }
@@ -288,37 +307,43 @@ class CustomGLView : GLSurfaceView {
     }
 
     fun addColorMap(colorMap: ColorMap) {
-        colorMaps.add(colorMap)
+        addColorMap(0, colorMap)
+    }
+
+    fun addColorMap(key: Int, colorMap: ColorMap) {
+        colorMaps.put(key, colorMap)
         if (rendererSurfaceCreated) {
-            addColorMapObject(colorMap)
+            addColorMapObject(key, colorMap)
         }
     }
 
-    private fun addColorMapObject(colorMap: ColorMap) {
-        when (colorMap) {
+    private fun addColorMapObject(key: Int, colorMap: ColorMap): GLObject {
+        return when (colorMap) {
             is ColorMap.RainbowColorMapRect -> {
-                colorMapObjects.add(
-                    Square(
-                        colorMap.centerPosition,
-                        colorMap.vec1,
-                        colorMap.vec2,
-                        colorMap.rotation,
-                        colorMap.flip,
-                        colorMap.sizePerWidth,
-                        colorMap.sizePerHeight
-                    )
-                )
+                Square(
+                    colorMap.centerPosition,
+                    colorMap.vec1,
+                    colorMap.vec2,
+                    colorMap.rotation,
+                    colorMap.flip,
+                    colorMap.sizePerWidth,
+                    colorMap.sizePerHeight,
+                    colorMap.colorMapper
+                ).also {
+                    colorMapObjects.put(key, it)
+                }
             }
             is ColorMap.RainbowColorMapCustom -> {
-                colorMapObjects.add(
-                    CustomObject(
-                        colorMap.vertexData,
-                        colorMap.heightMapIndexData,
-                        colorMap.centerPosition,
-                        colorMap.vec1,
-                        colorMap.vec2
-                    )
-                )
+                CustomObject(
+                    colorMap.vertexData,
+                    colorMap.heightMapIndexData,
+                    colorMap.centerPosition,
+                    colorMap.vec1,
+                    colorMap.vec2,
+                    colorMap.colorMapper
+                ).also {
+                    colorMapObjects.put(key, it)
+                }
             }
         }
     }
@@ -327,12 +352,14 @@ class CustomGLView : GLSurfaceView {
         setData(0, data)
     }
 
-    fun setData(position: Int, data: FloatArray) {
-        if (position >= 0 && position < colorMapObjects.size) {
-            colorMapObjects.get(position).setData(data)
+    fun setData(key: Int, data: FloatArray) {
+        if (colorMapObjects.indexOfKey(key) >= 0) {
+            colorMapObjects[key].setData(data)
             Handler(Looper.getMainLooper()).post {
                 requestRender()
             }
+        } else {
+            dataMap.put(key, data)
         }
     }
 
