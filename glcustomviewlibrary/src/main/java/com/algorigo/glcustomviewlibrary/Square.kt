@@ -7,13 +7,14 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
 
-internal class Square(private val centerPosition: CustomGLView.Vec3D = CustomGLView.Vec3D(0f, 0f, 0f),
-                      private val vec1: CustomGLView.Vec3D = CustomGLView.Vec3D(22f, 0f, 0f),
-                      private val vec2: CustomGLView.Vec3D = CustomGLView.Vec3D(0f, 22f, 0f),
-                      private var rotation: CustomGLView.Rotation = CustomGLView.Rotation.NORMAL,
-                      flip: Boolean = false,
-                      private val sizePerWidth: Int = 57,
-                      private val sizePerHeight: Int = 57) : CustomGLView.GLObject {
+internal class Square(private val centerPosition: CustomGLView.Vec3D,
+                      private val vec1: CustomGLView.Vec3D,
+                      private val vec2: CustomGLView.Vec3D,
+                      private var rotation: CustomGLView.Rotation,
+                      flip: Boolean,
+                      private val sizePerWidth: Int,
+                      private val sizePerHeight: Int,
+                      private var colorMapper: ColorMapper) : CustomGLView.GLObject {
 
     private val vbo = IntArray(1)
     private val ibo = IntArray(1)
@@ -198,7 +199,7 @@ internal class Square(private val centerPosition: CustomGLView.Vec3D = CustomGLV
         // First, build the data for the vertex buffer
         for (datum in data) {
             // Add some fancy colors.
-            val color = ColorMapper.getColor(datum * 100)
+            val color = colorMapper.getColorRGBA(datum * 100)
             heightMapVertexData[offset] = color[0]/255f
             heightMapVertexData[offset+1] = color[1]/255f
             heightMapVertexData[offset+2] = color[2]/255f

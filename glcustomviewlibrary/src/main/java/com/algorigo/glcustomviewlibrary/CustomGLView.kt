@@ -39,7 +39,8 @@ class CustomGLView : GLSurfaceView {
             var rotation: Rotation = Rotation.NORMAL,
             val flip: Boolean = false,
             val sizePerWidth: Int = 57,
-            val sizePerHeight: Int = 57
+            val sizePerHeight: Int = 57,
+            val colorMapper: ColorMapper = ColorMapperDefault
         ) : ColorMap()
 
         class RainbowColorMapCustom(
@@ -47,7 +48,8 @@ class CustomGLView : GLSurfaceView {
             val heightMapIndexData: IntArray,
             val centerPosition: Vec3D = Vec3D(0f, 0f, 0f),
             val vec1: Vec3D = Vec3D(22f, 0f, 0f),
-            val vec2: Vec3D = Vec3D(0f, 22f, 0f)
+            val vec2: Vec3D = Vec3D(0f, 22f, 0f),
+            val colorMapper: ColorMapper = ColorMapperDefault
         ) : ColorMap()
     }
 
@@ -325,7 +327,8 @@ class CustomGLView : GLSurfaceView {
                     colorMap.rotation,
                     colorMap.flip,
                     colorMap.sizePerWidth,
-                    colorMap.sizePerHeight
+                    colorMap.sizePerHeight,
+                    colorMap.colorMapper
                 ).also {
                     colorMapObjects.put(key, it)
                 }
@@ -336,7 +339,8 @@ class CustomGLView : GLSurfaceView {
                     colorMap.heightMapIndexData,
                     colorMap.centerPosition,
                     colorMap.vec1,
-                    colorMap.vec2
+                    colorMap.vec2,
+                    colorMap.colorMapper
                 ).also {
                     colorMapObjects.put(key, it)
                 }

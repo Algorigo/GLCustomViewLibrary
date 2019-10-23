@@ -8,9 +8,10 @@ import java.nio.ByteOrder
 
 internal class CustomObject(private val vertexData: List<PointF>,
                             private val heightMapIndexData: IntArray,
-                            private val centerPosition: CustomGLView.Vec3D = CustomGLView.Vec3D(0f, 0f, 0f),
-                            private val vec1: CustomGLView.Vec3D = CustomGLView.Vec3D(22f, 0f, 0f),
-                            private val vec2: CustomGLView.Vec3D = CustomGLView.Vec3D(0f, 22f, 0f)) : CustomGLView.GLObject {
+                            private val centerPosition: CustomGLView.Vec3D,
+                            private val vec1: CustomGLView.Vec3D,
+                            private val vec2: CustomGLView.Vec3D,
+                            private var colorMapper: ColorMapper) : CustomGLView.GLObject {
 
     private val vbo = IntArray(1)
     private val ibo = IntArray(1)
@@ -138,7 +139,7 @@ internal class CustomObject(private val vertexData: List<PointF>,
         // First, build the data for the vertex buffer
         for (datum in data) {
             // Add some fancy colors.
-            val color = ColorMapper.getColor(datum * 100)
+            val color = colorMapper.getColorRGBA(datum * 100)
             heightMapVertexData[offset] = color[0]/255f
             heightMapVertexData[offset+1] = color[1]/255f
             heightMapVertexData[offset+2] = color[2]/255f
