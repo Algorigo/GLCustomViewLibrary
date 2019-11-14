@@ -10,7 +10,7 @@ publish {
     userOrg = 'chagilhwan'
     groupId = 'com.algorigo.glcustomviewlibrary'
     artifactId = 'GLCustomViewLibrary'
-    publishVersion = '1.0.3'
+    publishVersion = '1.0.4'
     desc = 'AlgorigoBleLibrary'
     website = 'https://github.com/Algorigo/GLCustomViewLibraryApp'
     issueTracker = "${website}/issues"
