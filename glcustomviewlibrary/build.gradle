@@ -10,7 +10,7 @@ publish {
     userOrg = 'chagilhwan'
     groupId = 'com.algorigo.glcustomviewlibrary'
     artifactId = 'GLCustomViewLibrary'
-    publishVersion = '1.0.3'
+    publishVersion = '1.0.4'
     desc = 'AlgorigoBleLibrary'
     website = 'https://github.com/Algorigo/GLCustomViewLibraryApp'
     issueTracker = "${website}/issues"
@@ -45,6 +45,12 @@ dependencies {
     testImplementation 'junit:junit:4.12'
     androidTestImplementation 'androidx.test:runner:1.2.0'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.2.0'
+
+    // ReactiveX
+    implementation 'io.reactivex.rxjava2:rxjava:2.2.14'
+    implementation 'io.reactivex.rxjava2:rxandroid:2.1.1'
+    implementation 'io.reactivex.rxjava2:rxkotlin:2.4.0'
+    implementation 'com.jakewharton.rxrelay2:rxrelay:2.1.0'
 }
 
 buildscript {
