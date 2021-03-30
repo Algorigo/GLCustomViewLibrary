@@ -33,12 +33,11 @@ jobs:
         paths:
         - ~/.gradle/caches
         - ~/.gradle/wrapper
-    - restore_cache:
-        key: gradle-v1a-{{ arch }}-{{ checksum "./tmp_gradle_cache_seed" }}
-        name: Restore gradle cache
-    - restore_cache:
+    - save_cache:
         key: gradle-properties-${CIRCLE_WORKFLOW_ID}
-        name: Restore gradle properties
+        name: Save gradle properties
+        paths:
+          - ~/.gradle/gradle.properties
     - store_artifacts:
         path: glcustomviewlibrary/build/reports
         destination: reports
@@ -56,6 +55,12 @@ jobs:
     steps:
       - attach_workspace:
           at: .
+      - restore_cache:
+          key: gradle-v1a-{{ arch }}-{{ checksum "./tmp_gradle_cache_seed" }}
+          name: Restore gradle cache
+      - restore_cache:
+          key: gradle-properties-${CIRCLE_WORKFLOW_ID}
+          name: Restore gradle properties
       - run:
           name: Upload Maven Central
           command: ./gradlew uploadArchives
