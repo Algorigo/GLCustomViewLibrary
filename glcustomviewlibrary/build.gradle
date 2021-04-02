@@ -2,7 +2,7 @@ apply plugin: 'com.android.library'
 apply plugin: 'kotlin-android'
 apply plugin: 'kotlin-android-extensions'
 
-def versionStr = '1.1.0'
+def versionStr = '1.2.0'
 
 def getCurrentGitBranch() {
     def gitBranch = "Unknown branch"
@@ -103,6 +103,10 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
+    compileOptions {
+        sourceCompatibility 1.8
+        targetCompatibility 1.8
+    }
 }
 
 dependencies {
@@ -114,10 +118,10 @@ dependencies {
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.3.0'
 
     // ReactiveX
-    implementation 'io.reactivex.rxjava2:rxjava:2.2.17'
-    implementation 'io.reactivex.rxjava2:rxandroid:2.1.1'
-    implementation 'io.reactivex.rxjava2:rxkotlin:2.4.0'
-    implementation 'com.jakewharton.rxrelay2:rxrelay:2.1.1'
+    implementation 'io.reactivex.rxjava3:rxjava:3.0.6'
+    implementation 'io.reactivex.rxjava3:rxandroid:3.0.0'
+    implementation 'io.reactivex.rxjava3:rxkotlin:3.0.1'
+    implementation 'com.jakewharton.rxrelay3:rxrelay:3.0.0'
 }
 
 buildscript {

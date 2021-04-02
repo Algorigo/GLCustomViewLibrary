@@ -1,6 +1,6 @@
 package com.algorigo.glcustomviewlibrary.interpolator
 
-import io.reactivex.Single
+import io.reactivex.rxjava3.core.Single
 
 internal class SmoothInterpolator(val width: Int, val height: Int) : ImageProcessor {
 
