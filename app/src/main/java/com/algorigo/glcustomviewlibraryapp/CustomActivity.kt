@@ -5,21 +5,23 @@ import android.os.Bundle
 import android.util.Log
 import androidx.appcompat.app.AppCompatActivity
 import com.algorigo.glcustomviewlibrary.CustomGLView
+import com.algorigo.glcustomviewlibraryapp.databinding.ActivityCustomBinding
 import io.reactivex.rxjava3.core.Observable
 import io.reactivex.rxjava3.core.Single
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
 import io.reactivex.rxjava3.disposables.Disposable
-import kotlinx.android.synthetic.main.activity_custom.*
 import java.util.concurrent.TimeUnit
 
 class CustomActivity : AppCompatActivity() {
 
     private val data = FloatArray(4) { 0f }
     private var disposable: Disposable? = null
+    private lateinit var binding: ActivityCustomBinding
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_custom)
+        binding = ActivityCustomBinding.inflate(layoutInflater)
+        setContentView(binding.root)
 
         val pointList = mutableListOf<PointF>().apply {
             add(PointF(0.0f, 0.0f))
@@ -27,21 +29,21 @@ class CustomActivity : AppCompatActivity() {
             add(PointF(1.0f, 1.0f))
             add(PointF(0.0f, 1.0f))
         }
-        customGlView.addColorMap(CustomGLView.ColorMap.RainbowColorMapCustom(
+        binding.customGlView.addColorMap(CustomGLView.ColorMap.RainbowColorMapCustom(
             pointList,
             intArrayOf(0, 1, 2, 1, 3, 0),
             CustomGLView.Vec3D(0f, 0f, 0f),
             CustomGLView.Vec3D(0f, 22f, 0f),
             CustomGLView.Vec3D(22f, 0f, 0f)
         ))
-        button.setOnClickListener {
+        binding.button.setOnClickListener {
             if (it.isSelected) {
-                button.text = "Start"
-                button.isSelected = false
+                binding.button.text = "Start"
+                binding.button.isSelected = false
                 stop()
             } else {
-                button.text = "Stop"
-                button.isSelected = true
+                binding.button.text = "Stop"
+                binding.button.isSelected = true
                 start()
             }
         }
@@ -49,8 +51,8 @@ class CustomActivity : AppCompatActivity() {
 
     override fun onStop() {
         super.onStop()
-        button.text = "Stop"
-        button.isSelected = true
+        binding.button.text = "Stop"
+        binding.button.isSelected = true
         stop()
     }
 
@@ -67,7 +69,7 @@ class CustomActivity : AppCompatActivity() {
                 }
                 .subscribeOn(AndroidSchedulers.mainThread())
                 .subscribe({
-                    customGlView.setData(it)
+                    binding.customGlView.setData(it)
                 }, {
                     Log.e(LOG_TAG, "", it)
                 })

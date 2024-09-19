@@ -1,8 +1,9 @@
 apply plugin: 'com.android.library'
 apply plugin: 'kotlin-android'
-apply plugin: 'kotlin-android-extensions'
 
 def versionStr = '1.2.0'
+
+def kotlin_version = '1.9.0'
 
 def getCurrentGitBranch() {
     def gitBranch = "Unknown branch"
@@ -22,16 +23,8 @@ def getUserName() {
     return System.properties['user.name']
 }
 
-buildscript {
-    repositories {
-        jcenter()
-    }
-    dependencies {
-        classpath 'com.bmuschko:gradle-nexus-plugin:2.3.1'
-    }
-}
-
-apply plugin: 'com.bmuschko.nexus'
+apply plugin: 'maven-publish'
+apply plugin: 'signing'
 
 group = "com.algorigo.ui"
 archivesBaseName = "glcustomview"
@@ -41,55 +34,62 @@ if (getCurrentGitBranch().equals('master')) {
     version = "${versionStr}-${getUserName()}-SNAPSHOT"
 }
 
-modifyPom {
-    project {
-        name 'GLCustomViewLibrary'
-        description 'Open GL Custom View Library'
-        url 'https://github.com/Algorigo/AlgorigoBleLibrary'
-        inceptionYear '2018'
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            artifactId = archivesBaseName
+            pom {
+                name = 'GLCustomViewLibrary'
+                description = 'Open GL Custom View Library'
+                url = 'https://github.com/Algorigo/GLCustomViewLibrary'
+                artifact("$buildDir/outputs/aar/glcustomview-release.aar")
 
-        scm {
-            url 'https://github.com/Algorigo/AlgorigoBleLibrary'
-            connection 'scm:https://github.com/Algorigo/AlgorigoBleLibrary.git'
-            developerConnection 'scm:git:https://github.com/Algorigo/AlgorigoBleLibrary.git'
-        }
+                licenses {
+                    license {
+                        name = 'The Apache Software License, Version 2.0'
+                        url = 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+                    }
+                }
 
-        licenses {
-            license {
-                name 'The Apache Software License, Version 2.0'
-                url 'http://www.apache.org/licenses/LICENSE-2.0.txt'
-                distribution 'repo'
+                developers {
+                    developer {
+                        id = 'rouddy'
+                        name = 'Rouddy'
+                        email = 'rouddy@naver.com'
+                    }
+                }
+
+                scm {
+                    connection = 'scm:https://github.com/Algorigo/GLCustomViewLibrary.git'
+                    developerConnection = 'scm:git:https://github.com/Algorigo/GLCustomViewLibrary.git'
+                    url = 'https://github.com/Algorigo/GLCustomViewLibrary'
+                }
             }
         }
-
-        developers {
-            developer {
-                id 'rouddy'
-                name 'Rouddy'
-                email 'rouddy@naver.com'
+    }
+    repositories {
+        maven {
+            url = version.endsWith('SNAPSHOT') ? NEXUS_SNAPSHOT_REPOSITORY_URL : NEXUS_REPOSITORY_URL
+            credentials {
+                username = findProperty('nexusUsername')
+                password = findProperty('nexusPassword')
             }
         }
     }
 }
 
-extraArchive {
-    sources = true
-    tests = true
-    javadoc = true
-}
-
-nexus {
-    sign = true
-    repositoryUrl = NEXUS_REPOSITORY_URL
-    snapshotRepositoryUrl = NEXUS_SNAPSHOT_REPOSITORY_URL
+signing {
+    sign publishing.publications.mavenJava
 }
 
 android {
-    compileSdkVersion 30
+    namespace "com.algorigo.glcustomviewlibrary"
+
+    compileSdk 34
 
     defaultConfig {
         minSdkVersion 21
-        targetSdkVersion 30
+        targetSdkVersion 34
         versionCode 1
         versionName this.version
 
@@ -104,8 +104,11 @@ android {
         }
     }
     compileOptions {
-        sourceCompatibility 1.8
-        targetCompatibility 1.8
+        sourceCompatibility = JavaVersion.VERSION_1_8
+        targetCompatibility = JavaVersion.VERSION_1_8
+    }
+    kotlinOptions {
+        jvmTarget = "1.8"
     }
 }
 
@@ -114,21 +117,12 @@ dependencies {
     implementation"org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
 
     testImplementation 'junit:junit:4.13.2'
-    androidTestImplementation 'androidx.test:runner:1.3.0'
-    androidTestImplementation 'androidx.test.espresso:espresso-core:3.3.0'
+    androidTestImplementation 'androidx.test:runner:1.6.2'
+    androidTestImplementation 'androidx.test.espresso:espresso-core:3.6.1'
 
     // ReactiveX
-    implementation 'io.reactivex.rxjava3:rxjava:3.0.6'
-    implementation 'io.reactivex.rxjava3:rxandroid:3.0.0'
+    implementation 'io.reactivex.rxjava3:rxjava:3.1.8'
+    implementation 'io.reactivex.rxjava3:rxandroid:3.0.2'
     implementation 'io.reactivex.rxjava3:rxkotlin:3.0.1'
-    implementation 'com.jakewharton.rxrelay3:rxrelay:3.0.0'
-}
-
-buildscript {
-    repositories {
-        jcenter()
-    }
-    dependencies {
-        classpath 'com.novoda:bintray-release:0.9.1'
-    }
+    implementation 'com.jakewharton.rxrelay3:rxrelay:3.0.1'
 }
